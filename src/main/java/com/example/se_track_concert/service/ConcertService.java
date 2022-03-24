@@ -21,9 +21,9 @@ public class ConcertService {
 
     private final ConcertRepository concertRepository;
     private final WebClient webClient;
-    private final String performerUri = "http://localhost:6060/performer/check-id?id=";
-    private final String deleteReviewUri = "http://localhost:7070/review/delete?reviewId=";
-    private final String getReviewsUri = "http://localhost:7070/review/id-by-performer?performerId=";
+    private final String performerUri = "http://host.docker.internal:6060/performer/check-id?id=";
+    private final String deleteReviewUri = "http://host.docker.internal:7070/review/delete?reviewId=";
+    private final String getReviewsUri = "http://host.docker.internal:7070/review/id-by-performer?performerId=";
 
     @Autowired
     public ConcertService(ConcertRepository concertRepository) {

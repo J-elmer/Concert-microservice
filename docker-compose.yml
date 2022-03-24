@@ -1,6 +1,18 @@
 version: '3.1'
 
 services:
+  concert:
+    image: concert-service:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "9090:9090"
+    networks:
+      - concert
+    depends_on:
+      - db
+
   db:
     image: postgres
     restart: always
@@ -9,6 +21,8 @@ services:
       POSTGRES_PASSWORD: jelmer
     ports:
       - "5432:5432"
+    networks:
+      - concert
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -17,6 +31,12 @@ services:
     restart: always
     ports:
       - "8080:8080"
+    networks:
+      - concert
 
 volumes:
   pgdata:
+
+networks:
+  concert:
+    driver: bridge
