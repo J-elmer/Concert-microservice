@@ -11,4 +11,5 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
 
     Concert findConcertById(Long id);
 
+    List<Concert> findConcertByPerformerId(long performerId);
 }

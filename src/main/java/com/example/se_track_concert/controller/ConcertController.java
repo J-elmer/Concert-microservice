@@ -8,6 +8,7 @@ import com.example.se_track_concert.exception.ConcertNotFoundException;
 import com.example.se_track_concert.exception.InvalidPerformerIdException;
 import com.example.se_track_concert.model.Concert;
 import com.example.se_track_concert.service.ConcertService;
+import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -134,5 +136,28 @@ public class ConcertController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JsonResponseDTO("Concert has not been performed yet, no review possible"));
         }
         return ResponseEntity.status(HttpStatus.OK).body(new ValidReviewDTO(true, concert.getPerformerId()));
+    }
+
+    @GetMapping(value = "/concerts-by-performer")
+    public ResponseEntity<?> getConcertsByPerformerId(@RequestParam long performerId) {
+        try {
+            return ResponseEntity.status(HttpStatus.OK).body(this.concertService.getConcertsByPerformerId(performerId));
+        } catch (InvalidPerformerIdException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new JsonResponseDTO("No concert found with id " + performerId));
+        }
+    }
+
+    @GetMapping(value = "/check-delete-performer")
+    public ResponseEntity<?> checkIfPerformerCanBeDeleted(@RequestParam long performerId) {
+        List<Concert> concerts;
+        try {
+            concerts = this.concertService.getConcertsByPerformerId(performerId);
+        } catch (InvalidPerformerIdException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new JsonResponseDTO("No performer found with id " + performerId));
+        }
+        if (concerts.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.OK).body(Boolean.TRUE);
+        }
+        return ResponseEntity.status(HttpStatus.OK).body(Boolean.FALSE);
     }
 }

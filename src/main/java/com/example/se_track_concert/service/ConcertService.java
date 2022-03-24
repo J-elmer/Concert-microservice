@@ -135,6 +135,13 @@ public class ConcertService {
         this.concertRepository.delete(concertToDelete);
     }
 
+    public List<Concert> getConcertsByPerformerId(long performerId) throws InvalidPerformerIdException {
+        if (!checkIfPerformerIsValid(performerId)) {
+            throw new InvalidPerformerIdException();
+        }
+        return this.concertRepository.findConcertByPerformerId(performerId);
+    }
+
     private boolean checkIfPerformerIsValid(long performerId) {
         ResponseEntity<Boolean> response = webClient.get().uri(performerUri + performerId).retrieve().toEntity(Boolean.class).block();
         if (response != null) {
