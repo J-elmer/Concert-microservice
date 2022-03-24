@@ -3,22 +3,32 @@ package com.example.se_track_concert.service;
 import com.example.se_track_concert.controller.DTO.NewConcertDTO;
 import com.example.se_track_concert.controller.DTO.UpdateConcertDTO;
 import com.example.se_track_concert.exception.ConcertNotFoundException;
-import com.example.se_track_concert.exception.PerformerNotFoundException;
+import com.example.se_track_concert.exception.InvalidPerformerIdException;
 import com.example.se_track_concert.model.Concert;
 import com.example.se_track_concert.repository.ConcertRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class ConcertService {
 
     private final ConcertRepository concertRepository;
+    private final WebClient webClient;
+    private final String performerUri = "http://localhost:6060/performer/check-id?id=";
+    private final String deleteReviewUri = "http://localhost:7070/review/delete?reviewId=";
+    private final String getReviewsUri = "http://localhost:7070/review/id-by-performer?performerId=";
 
     @Autowired
     public ConcertService(ConcertRepository concertRepository) {
         this.concertRepository = concertRepository;
+        this.webClient = WebClient.create();
     }
 
     /**
@@ -50,10 +60,12 @@ public class ConcertService {
     /**
      *
      * @param newConcertDTO DTO class with information needed
-     * @throws PerformerNotFoundException if performer is null
+     * @throws InvalidPerformerIdException if performer is null
      */
-    public void createNewConcert(NewConcertDTO newConcertDTO) throws PerformerNotFoundException {
-        // TODO check if performerId is valid
+    public void createNewConcert(NewConcertDTO newConcertDTO) throws InvalidPerformerIdException {
+        if (!this.checkIfPerformerIsValid(newConcertDTO.getPerformerId())) {
+            throw new InvalidPerformerIdException();
+        }
         Concert concertToBeSaved = new Concert(
                 newConcertDTO.getPerformerId(),
                 newConcertDTO.getDay(),
@@ -68,9 +80,9 @@ public class ConcertService {
      *
      * @param updateConcertDTO DTO class with information needed to update
      * @throws ConcertNotFoundException when concert is not found
-     * @throws PerformerNotFoundException when performer is not found
+     * @throws InvalidPerformerIdException when performer is not found
      */
-    public void updateConcert(UpdateConcertDTO updateConcertDTO) throws ConcertNotFoundException, PerformerNotFoundException {
+    public void updateConcert(UpdateConcertDTO updateConcertDTO) throws ConcertNotFoundException, InvalidPerformerIdException {
         Concert concertToUpdate = this.concertRepository.findConcertById(updateConcertDTO.getId());
         if (concertToUpdate == null) {
             throw new ConcertNotFoundException();
@@ -83,12 +95,14 @@ public class ConcertService {
      * @param updateConcertDTO DTO class with update statement
      * @param concertToUpdate concert that needs to be updated
      * @return Concert that can be saved to db
-     * @throws PerformerNotFoundException if performer is not found
+     * @throws InvalidPerformerIdException if performer is not found
      */
-    private Concert compareUpdateStatement(UpdateConcertDTO updateConcertDTO, Concert concertToUpdate) throws PerformerNotFoundException {
+    private Concert compareUpdateStatement(UpdateConcertDTO updateConcertDTO, Concert concertToUpdate) throws InvalidPerformerIdException {
         if (updateConcertDTO.getPerformerId() > 0 &&
                 concertToUpdate.getPerformerId() != updateConcertDTO.getPerformerId()) {
-            // TODO Check if performerId is valid!
+            if (!this.checkIfPerformerIsValid(updateConcertDTO.getPerformerId())) {
+                throw new InvalidPerformerIdException();
+            }
             concertToUpdate.setPerformerId(updateConcertDTO.getPerformerId());
         }
         if (updateConcertDTO.getDay() != null && updateConcertDTO.getDay() != concertToUpdate.getDay()) {
@@ -113,10 +127,37 @@ public class ConcertService {
      */
     public void deleteConcert(Long id) throws ConcertNotFoundException {
         Concert concertToDelete = this.concertRepository.findConcertById(id);
-        // TODO: delete reviews too
         if (concertToDelete == null) {
             throw new ConcertNotFoundException();
         }
+        ArrayList<String> reviewIds = getReviewsOfPerformer(concertToDelete.getPerformerId());
+        this.deleteReviews(reviewIds);
         this.concertRepository.delete(concertToDelete);
+    }
+
+    private boolean checkIfPerformerIsValid(long performerId) {
+        ResponseEntity<Boolean> response = webClient.get().uri(performerUri + performerId).retrieve().toEntity(Boolean.class).block();
+        if (response != null) {
+            return Boolean.TRUE.equals(response.getBody());
+        }
+        return false;
+    }
+
+    private ArrayList<String> getReviewsOfPerformer(long performerId) {
+        Mono<Object[]> response = webClient.get().uri(getReviewsUri + performerId).accept(MediaType.APPLICATION_JSON).retrieve().bodyToMono(Object[].class).log();
+        Object[] objects = response.block();
+        ArrayList<String> reviewIds = new ArrayList<>();
+        if (objects != null) {
+            for (Object object: objects) {
+                reviewIds.add(object.toString());
+            }
+        }
+        return reviewIds;
+    }
+
+    private void deleteReviews(ArrayList<String> reviewIds) {
+        for (String reviewId: reviewIds) {
+            webClient.delete().uri(deleteReviewUri + reviewId).retrieve().toEntity(ResponseEntity.class).block();
+        }
     }
 }

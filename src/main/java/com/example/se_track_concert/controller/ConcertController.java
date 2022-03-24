@@ -5,7 +5,7 @@ import com.example.se_track_concert.controller.DTO.NewConcertDTO;
 import com.example.se_track_concert.controller.DTO.UpdateConcertDTO;
 import com.example.se_track_concert.controller.DTO.ValidReviewDTO;
 import com.example.se_track_concert.exception.ConcertNotFoundException;
-import com.example.se_track_concert.exception.PerformerNotFoundException;
+import com.example.se_track_concert.exception.InvalidPerformerIdException;
 import com.example.se_track_concert.model.Concert;
 import com.example.se_track_concert.service.ConcertService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,7 +75,7 @@ public class ConcertController {
     public ResponseEntity<?> createNewConcert(@Validated @RequestBody NewConcertDTO newConcertDTO) {
         try {
             this.concertService.createNewConcert(newConcertDTO);
-        } catch (PerformerNotFoundException e) {
+        } catch (InvalidPerformerIdException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).
                     body(new JsonResponseDTO("No performer found with id " + newConcertDTO.getPerformerId()));
         }
@@ -94,7 +94,7 @@ public class ConcertController {
             this.concertService.updateConcert(updateConcertDTO);
         } catch (ConcertNotFoundException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JsonResponseDTO("Invalid concert ID"));
-        } catch (PerformerNotFoundException e) {
+        } catch (InvalidPerformerIdException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).
                     body(new JsonResponseDTO("No performer found with id " + updateConcertDTO.getPerformerId()));
         }
@@ -127,7 +127,6 @@ public class ConcertController {
     @GetMapping(value = "/valid-review")
     public ResponseEntity<?> checkIfConcertCanBeReviewed(@RequestParam Long id) {
         Concert concert = this.concertService.getConcertById(id);
-        System.out.println(concert);
         if (concert == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new JsonResponseDTO("No concert found with id " + id));
         }
