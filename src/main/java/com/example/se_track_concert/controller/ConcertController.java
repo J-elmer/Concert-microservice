@@ -8,7 +8,6 @@ import com.example.se_track_concert.exception.ConcertNotFoundException;
 import com.example.se_track_concert.exception.InvalidPerformerIdException;
 import com.example.se_track_concert.model.Concert;
 import com.example.se_track_concert.service.ConcertService;
-import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,11 +16,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
 @RequestMapping("concert")
+@CrossOrigin(origins = "http://localhost:4200")
 public class ConcertController {
 
     private final ConcertService concertService;
