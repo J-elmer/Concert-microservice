@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -135,11 +136,35 @@ public class ConcertService {
         this.concertRepository.delete(concertToDelete);
     }
 
+    /**
+     * returns concerts with a certain performer id
+     * @param performerId of performer
+     * @return List of concerts
+     * @throws InvalidPerformerIdException if performer is not found
+     */
     public List<Concert> getConcertsByPerformerId(long performerId) throws InvalidPerformerIdException {
         if (!checkIfPerformerIsValid(performerId)) {
             throw new InvalidPerformerIdException();
         }
         return this.concertRepository.findConcertByPerformerId(performerId);
+    }
+
+    /**
+     * find concerts after certain date
+     * @param date to compare
+     * @return list of concerts after this date
+     */
+    public List<Concert> getConcertsAfterDate(LocalDate date) {
+        return this.concertRepository.findByDayAfter(date);
+    }
+
+    /**
+     * find concerts before certain date
+     * @param date to compare
+     * @return list of concerts after this date
+     */
+    public List<Concert> getConcertsBeforeDate(LocalDate date) {
+        return this.concertRepository.findByDayBefore(date);
     }
 
     private boolean checkIfPerformerIsValid(long performerId) {

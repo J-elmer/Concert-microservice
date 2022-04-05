@@ -159,4 +159,14 @@ public class ConcertController {
         }
         return ResponseEntity.status(HttpStatus.OK).body(Boolean.FALSE);
     }
+
+    @GetMapping(value="/past-concerts")
+    public List<Concert> getConcertsBeforeToday() {
+        return this.concertService.getConcertsBeforeDate(LocalDate.now());
+    }
+
+    @GetMapping(value="/future-concerts")
+    public List<Concert> getConcertsAfterToday() {
+        return this.concertService.getConcertsAfterDate(LocalDate.now());
+    }
 }
