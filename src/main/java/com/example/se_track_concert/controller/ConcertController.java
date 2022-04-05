@@ -4,6 +4,7 @@ import com.example.se_track_concert.controller.DTO.JsonResponseDTO;
 import com.example.se_track_concert.controller.DTO.NewConcertDTO;
 import com.example.se_track_concert.controller.DTO.UpdateConcertDTO;
 import com.example.se_track_concert.controller.DTO.ValidReviewDTO;
+import com.example.se_track_concert.exception.ConcertHasReviewsException;
 import com.example.se_track_concert.exception.ConcertNotFoundException;
 import com.example.se_track_concert.exception.InvalidPerformerIdException;
 import com.example.se_track_concert.model.Concert;
@@ -98,6 +99,9 @@ public class ConcertController {
         } catch (InvalidPerformerIdException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).
                     body(new JsonResponseDTO("No performer found with id " + updateConcertDTO.getPerformerId()));
+        } catch (ConcertHasReviewsException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).
+                    body(new JsonResponseDTO("Concert has reviews, performer can't be changed"));
         }
         return ResponseEntity.status(HttpStatus.OK).body(null);
     }

@@ -2,6 +2,7 @@ package com.example.se_track_concert.service;
 
 import com.example.se_track_concert.controller.DTO.NewConcertDTO;
 import com.example.se_track_concert.controller.DTO.UpdateConcertDTO;
+import com.example.se_track_concert.exception.ConcertHasReviewsException;
 import com.example.se_track_concert.exception.ConcertNotFoundException;
 import com.example.se_track_concert.exception.InvalidPerformerIdException;
 import com.example.se_track_concert.model.Concert;
@@ -24,7 +25,8 @@ public class ConcertService {
     private final WebClient webClient;
     private final String performerUri = "http://host.docker.internal:6060/performer/check-id?id=";
     private final String deleteReviewUri = "http://host.docker.internal:7070/review/delete?reviewId=";
-    private final String getReviewsUri = "http://host.docker.internal:7070/review/id-by-performer?performerId=";
+    private final String getReviewIdsByPerformerUri = "http://host.docker.internal:7070/review/id-by-performer?performerId=";
+    private final String getReviewsByConcertUri = "http://host.docker.internal:7070/review/review-by-concert?concertId=";
 
     @Autowired
     public ConcertService(ConcertRepository concertRepository) {
@@ -83,7 +85,7 @@ public class ConcertService {
      * @throws ConcertNotFoundException when concert is not found
      * @throws InvalidPerformerIdException when performer is not found
      */
-    public void updateConcert(UpdateConcertDTO updateConcertDTO) throws ConcertNotFoundException, InvalidPerformerIdException {
+    public void updateConcert(UpdateConcertDTO updateConcertDTO) throws ConcertNotFoundException, InvalidPerformerIdException, ConcertHasReviewsException {
         Concert concertToUpdate = this.concertRepository.findConcertById(updateConcertDTO.getId());
         if (concertToUpdate == null) {
             throw new ConcertNotFoundException();
@@ -98,11 +100,14 @@ public class ConcertService {
      * @return Concert that can be saved to db
      * @throws InvalidPerformerIdException if performer is not found
      */
-    private Concert compareUpdateStatement(UpdateConcertDTO updateConcertDTO, Concert concertToUpdate) throws InvalidPerformerIdException {
+    private Concert compareUpdateStatement(UpdateConcertDTO updateConcertDTO, Concert concertToUpdate) throws InvalidPerformerIdException, ConcertHasReviewsException {
         if (updateConcertDTO.getPerformerId() > 0 &&
                 concertToUpdate.getPerformerId() != updateConcertDTO.getPerformerId()) {
             if (!this.checkIfPerformerIsValid(updateConcertDTO.getPerformerId())) {
                 throw new InvalidPerformerIdException();
+            }
+            if (this.checkIfConcertHasReviews(concertToUpdate.getId())) {
+                throw new ConcertHasReviewsException();
             }
             concertToUpdate.setPerformerId(updateConcertDTO.getPerformerId());
         }
@@ -175,8 +180,18 @@ public class ConcertService {
         return false;
     }
 
+    private boolean checkIfConcertHasReviews(long concertId) {
+        Mono<Object[]> response = webClient.get().uri(getReviewsByConcertUri + concertId).
+                accept(MediaType.APPLICATION_JSON).retrieve().bodyToMono(Object[].class).log();
+        Object[] objects = response.block();
+        if (objects.length > 0) {
+            return true;
+        }
+        return false;
+    }
+
     private ArrayList<String> getReviewsOfPerformer(long performerId) {
-        Mono<Object[]> response = webClient.get().uri(getReviewsUri + performerId).accept(MediaType.APPLICATION_JSON).retrieve().bodyToMono(Object[].class).log();
+        Mono<Object[]> response = webClient.get().uri(getReviewIdsByPerformerUri + performerId).accept(MediaType.APPLICATION_JSON).retrieve().bodyToMono(Object[].class).log();
         Object[] objects = response.block();
         ArrayList<String> reviewIds = new ArrayList<>();
         if (objects != null) {
