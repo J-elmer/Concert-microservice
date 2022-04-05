@@ -184,10 +184,7 @@ public class ConcertService {
         Mono<Object[]> response = webClient.get().uri(getReviewsByConcertUri + concertId).
                 accept(MediaType.APPLICATION_JSON).retrieve().bodyToMono(Object[].class).log();
         Object[] objects = response.block();
-        if (objects.length > 0) {
-            return true;
-        }
-        return false;
+        return objects.length > 0;
     }
 
     private ArrayList<String> getReviewsOfPerformer(long performerId) {
