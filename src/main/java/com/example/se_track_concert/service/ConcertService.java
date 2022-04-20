@@ -8,11 +8,7 @@ import com.example.se_track_concert.exception.InvalidPerformerIdException;
 import com.example.se_track_concert.model.Concert;
 import com.example.se_track_concert.repository.ConcertRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -22,16 +18,18 @@ import java.util.List;
 public class ConcertService {
 
     private final ConcertRepository concertRepository;
-    private final WebClient webClient;
-    private final String performerUri = "http://host.docker.internal:6060/performer/check-id?id=";
-    private final String deleteReviewUri = "http://host.docker.internal:7070/review/delete?reviewId=";
-    private final String getReviewIdsByPerformerUri = "http://host.docker.internal:7070/review/id-by-performer?performerId=";
-    private final String getReviewsByConcertUri = "http://host.docker.internal:7070/review/review-by-concert?concertId=";
+    private final PerformerApiService performerApiService;
+    private final ReviewApiService reviewApiService;
 
     @Autowired
-    public ConcertService(ConcertRepository concertRepository) {
+    public ConcertService(
+            ConcertRepository concertRepository,
+            PerformerApiService performerApiService,
+            ReviewApiService reviewApiService)
+    {
         this.concertRepository = concertRepository;
-        this.webClient = WebClient.create();
+        this.performerApiService = performerApiService;
+        this.reviewApiService = reviewApiService;
     }
 
     /**
@@ -66,7 +64,7 @@ public class ConcertService {
      * @throws InvalidPerformerIdException if performer is null
      */
     public void createNewConcert(NewConcertDTO newConcertDTO) throws InvalidPerformerIdException {
-        if (!this.checkIfPerformerIsValid(newConcertDTO.getPerformerId())) {
+        if (!this.performerApiService.checkIfPerformerIsValid(newConcertDTO.getPerformerId())) {
             throw new InvalidPerformerIdException();
         }
         Concert concertToBeSaved = new Concert(
@@ -103,10 +101,10 @@ public class ConcertService {
     private Concert compareUpdateStatement(UpdateConcertDTO updateConcertDTO, Concert concertToUpdate) throws InvalidPerformerIdException, ConcertHasReviewsException {
         if (updateConcertDTO.getPerformerId() > 0 &&
                 concertToUpdate.getPerformerId() != updateConcertDTO.getPerformerId()) {
-            if (!this.checkIfPerformerIsValid(updateConcertDTO.getPerformerId())) {
+            if (!this.performerApiService.checkIfPerformerIsValid(updateConcertDTO.getPerformerId())) {
                 throw new InvalidPerformerIdException();
             }
-            if (this.checkIfConcertHasReviews(concertToUpdate.getId())) {
+            if (this.reviewApiService.checkIfConcertHasReviews(concertToUpdate.getId())) {
                 throw new ConcertHasReviewsException();
             }
             concertToUpdate.setPerformerId(updateConcertDTO.getPerformerId());
@@ -136,8 +134,8 @@ public class ConcertService {
         if (concertToDelete == null) {
             throw new ConcertNotFoundException();
         }
-        ArrayList<String> reviewIds = getReviewsOfPerformer(concertToDelete.getPerformerId());
-        this.deleteReviews(reviewIds);
+        ArrayList<String> reviewIds = this.reviewApiService.getReviewsOfPerformer(concertToDelete.getPerformerId());
+        this.reviewApiService.deleteReviews(reviewIds);
         this.concertRepository.delete(concertToDelete);
     }
 
@@ -148,7 +146,7 @@ public class ConcertService {
      * @throws InvalidPerformerIdException if performer is not found
      */
     public List<Concert> getConcertsByPerformerId(long performerId) throws InvalidPerformerIdException {
-        if (!checkIfPerformerIsValid(performerId)) {
+        if (!performerApiService.checkIfPerformerIsValid(performerId)) {
             throw new InvalidPerformerIdException();
         }
         return this.concertRepository.findConcertByPerformerId(performerId);
@@ -172,36 +170,5 @@ public class ConcertService {
         return this.concertRepository.findByDayBefore(date);
     }
 
-    private boolean checkIfPerformerIsValid(long performerId) {
-        ResponseEntity<Boolean> response = webClient.get().uri(performerUri + performerId).retrieve().toEntity(Boolean.class).block();
-        if (response != null) {
-            return Boolean.TRUE.equals(response.getBody());
-        }
-        return false;
-    }
 
-    private boolean checkIfConcertHasReviews(long concertId) {
-        Mono<Object[]> response = webClient.get().uri(getReviewsByConcertUri + concertId).
-                accept(MediaType.APPLICATION_JSON).retrieve().bodyToMono(Object[].class).log();
-        Object[] objects = response.block();
-        return objects.length > 0;
-    }
-
-    private ArrayList<String> getReviewsOfPerformer(long performerId) {
-        Mono<Object[]> response = webClient.get().uri(getReviewIdsByPerformerUri + performerId).accept(MediaType.APPLICATION_JSON).retrieve().bodyToMono(Object[].class).log();
-        Object[] objects = response.block();
-        ArrayList<String> reviewIds = new ArrayList<>();
-        if (objects != null) {
-            for (Object object: objects) {
-                reviewIds.add(object.toString());
-            }
-        }
-        return reviewIds;
-    }
-
-    private void deleteReviews(ArrayList<String> reviewIds) {
-        for (String reviewId: reviewIds) {
-            webClient.delete().uri(deleteReviewUri + reviewId).retrieve().toEntity(ResponseEntity.class).block();
-        }
-    }
 }
