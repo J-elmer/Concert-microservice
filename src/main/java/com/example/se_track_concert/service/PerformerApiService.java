@@ -1,6 +1,7 @@
 package com.example.se_track_concert.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -12,10 +13,11 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class PerformerApiService {
 
     private final WebClient webClient;
-    private final String performerUri = "http://host.docker.internal:6060/performer/check-id?id=";
+    private final Environment env;
 
     @Autowired
-    public PerformerApiService() {
+    public PerformerApiService(Environment env) {
+        this.env = env;
         this.webClient = WebClient.create();
     }
 
@@ -25,7 +27,8 @@ public class PerformerApiService {
      * @return boolean whether performer exists
      */
     public boolean checkIfPerformerIsValid(long performerId) {
-        ResponseEntity<Boolean> response = webClient.get().uri(performerUri + performerId).retrieve().toEntity(Boolean.class).block();
+        String apiUrl = this.env.getProperty("performer.api") + "check-id?id=";
+        ResponseEntity<Boolean> response = webClient.get().uri(apiUrl + performerId).retrieve().toEntity(Boolean.class).block();
         if (response != null) {
             return Boolean.TRUE.equals(response.getBody());
         }

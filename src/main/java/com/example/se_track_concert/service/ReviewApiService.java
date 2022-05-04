@@ -1,6 +1,7 @@
 package com.example.se_track_concert.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -16,13 +17,14 @@ import java.util.ArrayList;
 public class ReviewApiService {
 
     private final WebClient webClient;
+    private final Environment env;
 
-    private final String deleteReviewUri = "http://host.docker.internal:7070/review/delete?reviewId=";
-    private final String getReviewIdsByPerformerUri = "http://host.docker.internal:7070/review/id-by-performer?performerId=";
-    private final String getReviewsByConcertUri = "http://host.docker.internal:7070/review/review-by-concert?concertId=";
+    private final String reviewApi;
 
     @Autowired
-    public ReviewApiService() {
+    public ReviewApiService(Environment env) {
+        this.env = env;
+        this.reviewApi = this.env.getProperty("review.api");
         this.webClient = WebClient.create();
     }
 
@@ -32,6 +34,7 @@ public class ReviewApiService {
      * @return boolean whether there are concerts or not
      */
     public boolean checkIfConcertHasReviews(long concertId) {
+        String getReviewsByConcertUri = this.reviewApi + "review-by-concert?concertId=";
         Mono<Object[]> response = webClient.get().uri(getReviewsByConcertUri + concertId).
                 accept(MediaType.APPLICATION_JSON).retrieve().bodyToMono(Object[].class).log();
         Object[] objects = response.block();
@@ -45,6 +48,7 @@ public class ReviewApiService {
      * @return list of reviews
      */
     public ArrayList<String> getReviewsOfPerformer(long performerId) {
+        String getReviewIdsByPerformerUri = this.reviewApi + "id-by-performer?performerId=";
         Mono<Object[]> response = webClient.get().uri(getReviewIdsByPerformerUri + performerId).accept(MediaType.APPLICATION_JSON).retrieve().bodyToMono(Object[].class).log();
         Object[] objects = response.block();
         ArrayList<String> reviewIds = new ArrayList<>();
@@ -61,6 +65,7 @@ public class ReviewApiService {
      * @param reviewIds revieId's to delete
      */
     public void deleteReviews(ArrayList<String> reviewIds) {
+        String deleteReviewUri = reviewApi + "delete?reviewId=";
         for (String reviewId: reviewIds) {
             webClient.delete().uri(deleteReviewUri + reviewId).retrieve().toEntity(ResponseEntity.class).block();
         }
