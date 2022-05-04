@@ -1,6 +1,9 @@
 package com.example.se_track_concert.service;
 
 import com.example.se_track_concert.controller.DTO.NewConcertDTO;
+import com.example.se_track_concert.controller.DTO.UpdateConcertDTO;
+import com.example.se_track_concert.exception.ConcertHasReviewsException;
+import com.example.se_track_concert.exception.ConcertNotFoundException;
 import com.example.se_track_concert.exception.InvalidPerformerIdException;
 import com.example.se_track_concert.model.Concert;
 import com.example.se_track_concert.repository.ConcertRepository;
@@ -13,9 +16,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class ConcertServiceTest {
@@ -23,10 +29,15 @@ class ConcertServiceTest {
     @InjectMocks
     private ConcertService concertService;
 
-    private static Concert concertUnderTest1 = new Concert(1, LocalDate.of(2020,10,10), "test", LocalTime.now(), LocalTime.now());
-    private static Concert concertUnderTest2 = new Concert(2, LocalDate.of(2090,10,10), "stage", LocalTime.now(), LocalTime.now());
     @Mock
     private ConcertRepository concertRepository;
+    @Mock
+    private PerformerApiService performerApiService;
+    @Mock
+    private ReviewApiService reviewApiService;
+
+    private static Concert concertUnderTest1 = new Concert(1, LocalDate.of(2020,10,10), "test", LocalTime.of(10, 0), LocalTime.of(10, 0));
+    private static Concert concertUnderTest2 = new Concert(2, LocalDate.of(2090,10,10), "stage", LocalTime.of(10, 0), LocalTime.of(10, 0));
 
     @Test
     void getAllConcerts() {
@@ -49,26 +60,46 @@ class ConcertServiceTest {
 
     @Test
     void createNewConcert() throws InvalidPerformerIdException {
-        // TODO figure out how to mock the api call
-        fail();
+        Mockito.when(performerApiService.checkIfPerformerIsValid(1)).thenReturn(true);
+
+        NewConcertDTO newConcert = new NewConcertDTO(1, LocalDate.of(2020,10,10), "test", LocalTime.of(10, 0), LocalTime.of(10, 0));
+        NewConcertDTO newConcert2 = new NewConcertDTO(2, LocalDate.of(2090,10,10), "stage", LocalTime.of(10, 0), LocalTime.of(10, 0));
+
+        this.concertService.createNewConcert(newConcert);
+        verify(this.concertRepository, times(1)).save(concertUnderTest1);
+        assertThrows(InvalidPerformerIdException.class, () -> this.concertService.createNewConcert(newConcert2));
     }
 
     @Test
-    void updateConcert() {
-        // TODO figure out how to mock the api call
-        fail();
+    void updateConcert() throws ConcertHasReviewsException, InvalidPerformerIdException, ConcertNotFoundException {
+        Mockito.when(this.concertRepository.findConcertById(1L)).thenReturn(concertUnderTest1);
+
+        UpdateConcertDTO updateConcert = new UpdateConcertDTO(1, 1, LocalDate.now(), "test", LocalTime.of(15, 0), LocalTime.of(15, 0));
+        UpdateConcertDTO updateConcert2 = new UpdateConcertDTO(2, 2, LocalDate.now(), "stage", LocalTime.of(15, 0), LocalTime.of(15, 0));
+
+        this.concertService.updateConcert(updateConcert);
+        verify(this.concertRepository, times(1)).save(concertUnderTest1);
+        assertThrows(ConcertNotFoundException.class, () -> this.concertService.updateConcert(updateConcert2));
+
     }
 
     @Test
-    void deleteConcert() {
-        // TODO figure out how to mock the api call
-        fail();
+    void deleteConcert() throws ConcertNotFoundException {
+        Mockito.when(this.concertRepository.findConcertById(1L)).thenReturn(concertUnderTest1);
+        Mockito.when(this.reviewApiService.getReviewsOfPerformer(1L)).thenReturn(new ArrayList<>());
+
+        this.concertService.deleteConcert(1L);
+        verify(this.concertRepository, times(1)).delete(concertUnderTest1);
     }
 
     @Test
-    void getConcertsByPerformerId() {
-        // TODO figure out how to mock the api call
-        fail();
+    void getConcertsByPerformerId() throws InvalidPerformerIdException {
+        Mockito.when(performerApiService.checkIfPerformerIsValid(1)).thenReturn(true);
+        Mockito.when(this.concertRepository.findConcertByPerformerId(1L)).thenReturn(new ArrayList<>());
+
+        this.concertService.getConcertsByPerformerId(1L);
+
+        verify(this.concertRepository, times(1)).findConcertByPerformerId(1L);
     }
 
     @Test
