@@ -20,5 +20,6 @@ Once the containers are running, start the project locally (through IntelliJ for
 
 You can test through postman. The application is configured to run on port 9090, so be sure to send requests to that port or change it in the application.properties file.
 
-Note that for the whole functionallity to work, you should also make sure you run the performer and review microservice, otherwise creating, updating and deleting concerts will not work as expected.
+**Important note**
+In order for the whole application to work, you should also make sure you run the performer and review microservice, otherwise creating, updating and deleting concerts will not work as expected.
 
